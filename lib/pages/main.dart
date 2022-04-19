@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,11 +31,53 @@ class MyHomePage extends StatefulWidget {
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
+
 }
 
 class _MyHomePageState extends State<MyHomePage> {
   late CenterOnLocationUpdate _centerOnLocationUpdate;
   late StreamController<double?> _centerCurrentLocationStreamController;
+
+  /// Determine the current position of the device.
+  ///
+  /// When the location services are not enabled or permissions
+  /// are denied the `Future` will return an error.
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled don't continue
+      // accessing the position and request users of the
+      // App to enable the location services.
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, next time you could try
+        // requesting permissions again (this is also where
+        // Android's shouldShowRequestPermissionRationale
+        // returned true. According to Android guidelines
+        // your App should show an explanatory UI now.
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // Permissions are denied forever, handle appropriately.
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    // When we reach here, permissions are granted and we can
+    // continue accessing the position of the device.
+    return await Geolocator.getCurrentPosition();
+  }
 
   @override
   void initState() {
@@ -57,8 +100,14 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: FlutterMap(
         options: MapOptions(
+          interactiveFlags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+          bounds: LatLngBounds(
+            LatLng(12.426979,-69.212003),
+            LatLng(11.927611,-68.607352),
+          ),
+          boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(8.0)),
           center: LatLng(12.169570,-68.990021),
-          zoom: 11,
+          zoom: 13,
           maxZoom: 19,
           onPositionChanged: (MapPosition position, bool hasGesture) {
             if (hasGesture) {
@@ -88,6 +137,7 @@ class _MyHomePageState extends State<MyHomePage> {
             bottom: 20,
             child: FloatingActionButton(
               onPressed: () {
+                _determinePosition();
                 // Automatically center the location marker on the map when location updated until user interact with the map.
                 setState(
                       () => _centerOnLocationUpdate = CenterOnLocationUpdate.always,
@@ -105,3 +155,4 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
