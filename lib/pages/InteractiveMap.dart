@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:positioned_tap_detector_2/positioned_tap_detector_2.dart';
 
 class InteractiveMap extends StatefulWidget {
   const InteractiveMap({Key? key}) : super(key: key);
@@ -28,19 +29,30 @@ class _InteractiveMapState extends State<InteractiveMap> {
     super.dispose();
   }
 
+  List<LatLng> tappedPoints = [];
+
   @override
   Widget build(BuildContext context) {
+    var markers = tappedPoints.map((latlng) {
+      return Marker(
+        width: 80.0,
+        height: 80.0,
+        point: latlng,
+        builder: (ctx) => const Icon(Icons.location_pin, color: Colors.red,),
+      );
+    }).toList();
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Geolocation App"),
-      ),
+      appBar: AppBar(title: const Text("Geolocation App"),),
       body: FlutterMap(
         options: MapOptions(
           interactiveFlags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+          onTap: _handleTap,
           maxBounds: LatLngBounds(
-            LatLng(12.426979,-69.212003),
-            LatLng(11.927611,-68.607352),
+            LatLng(12.398636,-69.177026),
+            LatLng(11.997293,-68.725121),
           ),
+
           zoom: 13,
           maxZoom: 19,
           // Stop centering the location marker on the map if user interacted with the map.
@@ -61,6 +73,7 @@ class _InteractiveMapState extends State<InteractiveMap> {
               maxZoom: 19,
             ),
           ),
+          MarkerLayerWidget(options: MarkerLayerOptions(markers: markers)),
           LocationMarkerLayerWidget(
             plugin: LocationMarkerPlugin(
               centerCurrentLocationStream:
@@ -90,5 +103,11 @@ class _InteractiveMapState extends State<InteractiveMap> {
         ],
       ),
     );
+  }
+
+  void _handleTap(TapPosition tapPosition, LatLng latlng) {
+    setState(() {
+      tappedPoints.add(latlng);
+    });
   }
 }
