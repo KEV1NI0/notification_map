@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
-import 'package:positioned_tap_detector_2/positioned_tap_detector_2.dart';
+import 'package:location/location.dart';
 
 class InteractiveMap extends StatefulWidget {
   const InteractiveMap({Key? key}) : super(key: key);
@@ -13,101 +13,210 @@ class InteractiveMap extends StatefulWidget {
 }
 
 class _InteractiveMapState extends State<InteractiveMap> {
-  late CenterOnLocationUpdate _centerOnLocationUpdate;
-  late StreamController<double?> _centerCurrentLocationStreamController;
+  LocationData? _currentLocation;
+  late final MapController _mapController;
+
+  bool _permission = false;
+
+  String? _serviceError = '';
+
+  var interActiveFlags = InteractiveFlag.all;
+
+  final Location _locationService = Location();
 
   @override
   void initState() {
     super.initState();
-    _centerOnLocationUpdate = CenterOnLocationUpdate.always;
-    _centerCurrentLocationStreamController = StreamController<double?>();
+    _mapController = MapController();
+    initLocationService();
   }
 
-  @override
-  void dispose() {
-    _centerCurrentLocationStreamController.close();
-    super.dispose();
-  }
+  void initLocationService() async {
+    await _locationService.changeSettings(
+      accuracy: LocationAccuracy.high,
+      interval: 1000,
+    );
 
-  List<LatLng> tappedPoints = [];
+    LocationData? location;
+    bool serviceEnabled;
+    bool serviceRequestResult;
+
+    try {
+      serviceEnabled = await _locationService.serviceEnabled();
+
+      if (serviceEnabled) {
+        var permission = await _locationService.requestPermission();
+        _permission = permission == PermissionStatus.granted;
+
+        if (_permission) {
+          location = await _locationService.getLocation();
+          _currentLocation = location;
+          _locationService.onLocationChanged
+              .listen((LocationData result) async {
+            if (mounted) {
+              setState(() {
+                _currentLocation = result;
+                _mapController.move(
+                    LatLng(_currentLocation!.latitude!,
+                        _currentLocation!.longitude!),
+                    _mapController.zoom);
+              });
+            }
+          });
+        }
+      } else {
+        serviceRequestResult = await _locationService.requestService();
+        if (serviceRequestResult) {
+          initLocationService();
+          return;
+        }
+      }
+    } on PlatformException catch (e) {
+      debugPrint(e.toString());
+      if (e.code == 'PERMISSION_DENIED') {
+        _serviceError = e.message;
+      } else if (e.code == 'SERVICE_STATUS_ERROR') {
+        _serviceError = e.message;
+      }
+      location = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    var markers = tappedPoints.map((latlng) {
-      return Marker(
+    LatLng currentLatLng;
+
+    // Until currentLocation is initially updated, Widget can locate to 0, 0
+    // by default or store previous location value to show.
+    if (_currentLocation != null) {
+      currentLatLng =
+          LatLng(_currentLocation!.latitude!, _currentLocation!.longitude!);
+    } else {
+      currentLatLng = LatLng(0, 0);
+    }
+
+    var markers = <Marker>[
+      Marker(
         width: 80.0,
         height: 80.0,
-        point: latlng,
+        point: currentLatLng,
         builder: (ctx) => const Icon(Icons.location_pin, color: Colors.red,),
-      );
-    }).toList();
+      ),
+    ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Geolocation App"),),
-      body: FlutterMap(
-        options: MapOptions(
-          interactiveFlags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-          onTap: _handleTap,
-          maxBounds: LatLngBounds(
-            LatLng(12.398636,-69.177026),
-            LatLng(11.997293,-68.725121),
-          ),
-
-          zoom: 13,
-          maxZoom: 19,
-          // Stop centering the location marker on the map if user interacted with the map.
-          onPositionChanged: (MapPosition position, bool hasGesture) {
-            if (hasGesture) {
-              setState(
-                    () => _centerOnLocationUpdate = CenterOnLocationUpdate.never,
-              );
-            }
-          }
-        ),
-        // ignore: sort_child_properties_last
-        children: [
-          TileLayerWidget(
-            options: TileLayerOptions(
-              urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-              subdomains: ['a', 'b', 'c'],
-              maxZoom: 19,
+      appBar: AppBar(title: const Text('Home')),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+              child: _serviceError!.isEmpty
+                  ? Text('This is a map that is showing '
+                  '(${currentLatLng.latitude}, ${currentLatLng.longitude}).')
+                  : Text(
+                  'Error occurred while acquiring location. Error Message : '
+                      '$_serviceError'),
             ),
-          ),
-          MarkerLayerWidget(options: MarkerLayerOptions(markers: markers)),
-          LocationMarkerLayerWidget(
-            plugin: LocationMarkerPlugin(
-              centerCurrentLocationStream:
-              _centerCurrentLocationStreamController.stream,
-              centerOnLocationUpdate: _centerOnLocationUpdate,
-            ),
-          ),
-        ],
-        nonRotatedChildren: [
-          Positioned(
-            right: 20,
-            bottom: 20,
-            child: FloatingActionButton(
-              onPressed: () {
-                // Automatically center the location marker on the map when location updated until user interact with the map.
-                setState(
-                      () => _centerOnLocationUpdate = CenterOnLocationUpdate.always,
-                );
-                // Center the location marker on the map and zoom the map to level 18.
-                _centerCurrentLocationStreamController.add(18);
-              },
-              child: const Icon(
-                Icons.my_location,
+            Flexible(
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  maxBounds: LatLngBounds(
+                    LatLng(12.398636,-69.177026),
+                    LatLng(11.997293,-68.725121),
+                  ),
+                  zoom: 13,
+                  maxZoom: 17,
+                  center:
+                  LatLng(currentLatLng.latitude, currentLatLng.longitude),
+                  interactiveFlags: interActiveFlags,
+                ),
+                layers: [
+                  TileLayerOptions(
+                    urlTemplate:
+                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    subdomains: ['a', 'b', 'c'],
+                    // For example purposes. It is recommended to use
+                    // TileProvider with a caching and retry strategy, like
+                    // NetworkTileProvider or CachedNetworkTileProvider
+                    tileProvider: const NonCachingNetworkTileProvider(),
+                  ),
+                  MarkerLayerOptions(markers: markers)
+                ],
               ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: Builder(builder: (BuildContext context) {
+        return Stack(
+          children: [
+            Positioned(
+              bottom: 10,
+              right: 10,
+              child: FloatingActionButton(
+                  onPressed: () {
+                    if(_currentLocation == null){
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text(
+                            'Please try again'),
+                      ));
+                    }
+                    _mapController.move(
+                        LatLng(_currentLocation!.latitude!,
+                            _currentLocation!.longitude!),
+                        _mapController.zoom);
+                    setState(() {
+                    });
+                  },
+                  child: const Icon(Icons.my_location)
+              ),
+            ),
+            Positioned(
+              bottom: 75,
+              right: 10,
+              child: FloatingActionButton(
+                  onPressed: () {
+                    if(_currentLocation == null){
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text(
+                            'Please find location first'),
+                      ));
+                    } else {
+                      alertDialog();
+                    }
+                    setState(() {
+                    });
+                  },
+                  child: const Icon(Icons.add_location_alt)
+              ),
+            )
+          ],
+        );
+      }),
+    );
+  }
+  Future alertDialog(){
+    return showDialog(context: context, builder: (context) => AlertDialog(
+      title: Column(
+        children: [
+          TextFormField(
+            onFieldSubmitted: (v){},
+            decoration: const InputDecoration(labelText: 'Whatever'),
+          ),
+          Container(
+            width: 300,
+            margin: const EdgeInsets.only(top: 10),
+            child: MaterialButton(
+              child: const Text('Add Marker'),
+              onPressed: () {  },
             ),
           )
         ],
       ),
+    )
     );
-  }
-
-  void _handleTap(TapPosition tapPosition, LatLng latlng) {
-    setState(() {
-      tappedPoints.add(latlng);
-    });
   }
 }
