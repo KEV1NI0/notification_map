@@ -4,6 +4,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:location/location.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:http/http.dart' show get;
 
 class InteractiveMap extends StatefulWidget {
   const InteractiveMap({Key? key}) : super(key: key);
@@ -81,10 +84,11 @@ class _InteractiveMapState extends State<InteractiveMap> {
       location = null;
     }
   }
+  late LatLng currentLatLng;
 
   @override
   Widget build(BuildContext context) {
-    LatLng currentLatLng;
+
 
     // Until currentLocation is initially updated, Widget can locate to 0, 0
     // by default or store previous location value to show.
@@ -163,6 +167,9 @@ class _InteractiveMapState extends State<InteractiveMap> {
                         content: Text(
                             'Please try again'),
                       ));
+                    } else{
+                      print(_currentLocation);
+                      print(currentLatLng);
                     }
                     _mapController.move(
                         LatLng(_currentLocation!.latitude!,
@@ -199,19 +206,48 @@ class _InteractiveMapState extends State<InteractiveMap> {
     );
   }
   Future alertDialog(){
+
+    TextEditingController name = TextEditingController();
+    //TextEditingController location = TextEditingController();
+
+    Future<void> insertRecord() async{
+      if(name.text==""){
+        try{
+          String uri = "http://localhost/DBConnect/insert_record.php";
+          var res = await http.post(Uri.parse(uri), body: {
+            'name': name.text,
+          });
+          var response=jsonDecode(res.body);
+          if(response['success']==""){
+            print("record inserted");
+          } else {
+            print("some issue");
+          }
+        } catch(e){
+          print(e);
+        }
+      } else{
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Please fill in the Problem Name'),
+        ));
+      }
+    }
+
     return showDialog(context: context, builder: (context) => AlertDialog(
+
       title: Column(
         children: [
           TextFormField(
-            onFieldSubmitted: (v){},
-            decoration: const InputDecoration(labelText: 'Whatever'),
+            controller: name,
+            decoration: const InputDecoration(labelText: 'Problem Name'),
           ),
           Container(
             width: 300,
             margin: const EdgeInsets.only(top: 10),
             child: MaterialButton(
               child: const Text('Add Marker'),
-              onPressed: () {  },
+              onPressed: () { insertRecord(); },
             ),
           )
         ],
