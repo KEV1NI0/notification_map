@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:http/http.dart' show get;
 
 class InteractiveMap extends StatefulWidget {
   const InteractiveMap({Key? key}) : super(key: key);
@@ -207,10 +205,10 @@ class _InteractiveMapState extends State<InteractiveMap> {
   }
   Future alertDialog(){
 
-    TextEditingController name = TextEditingController();
+    //TextEditingController name = TextEditingController();
     //TextEditingController location = TextEditingController();
 
-    Future<void> insertRecord() async{
+    /*Future<void> insertRecord() async{
       if(name.text==""){
         try{
           String uri = "http://localhost/DBConnect/insert_record.php";
@@ -232,6 +230,16 @@ class _InteractiveMapState extends State<InteractiveMap> {
               'Please fill in the Problem Name'),
         ));
       }
+    }*/
+
+    String name = '';
+    void insertRecord(){
+      http.post(Uri.parse("http://localhost/DBConnect/insert_record.php"),
+          body: {
+        'id': '',
+            'name': name,
+          });
+
     }
 
     return showDialog(context: context, builder: (context) => AlertDialog(
@@ -239,7 +247,12 @@ class _InteractiveMapState extends State<InteractiveMap> {
       title: Column(
         children: [
           TextFormField(
-            controller: name,
+            onChanged: (String value){
+              name = value;
+            },
+            onFieldSubmitted: (v){
+              insertRecord();
+            },
             decoration: const InputDecoration(labelText: 'Problem Name'),
           ),
           Container(
