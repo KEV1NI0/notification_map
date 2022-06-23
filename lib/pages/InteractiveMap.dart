@@ -186,7 +186,7 @@ class _InteractiveMapState extends State<InteractiveMap> {
                         content: Text('Please find location first'),
                       ));
                     } else {
-                      alertDialog();
+                      addMarkerDialog();
                     }
                     setState(() {});
                   },
@@ -198,7 +198,7 @@ class _InteractiveMapState extends State<InteractiveMap> {
     );
   }
 
-  Future alertDialog() {
+  Future addMarkerDialog() {
     String name = '';
     String location = currentLatLng.toString();
     String status = 'open';
@@ -226,68 +226,74 @@ class _InteractiveMapState extends State<InteractiveMap> {
 
     return showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-              title: Column(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.all(10),
-                    child: TextFormField(
-                      onChanged: (String value) {
-                        name = value;
-                      },
-                      autofocus: true,
-                      onFieldSubmitted: (v) {
-                        insertRecord();
-                      },
-                      decoration:
-                          const InputDecoration(labelText: 'Problem Name'),
+        builder: (context) => StatefulBuilder(builder: (context, setState) {
+              return AlertDialog(
+                title: Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.all(10),
+                      child: TextFormField(
+                        onChanged: (String value) {
+                          setState(() {
+                            name = value;
+                          });
+                        },
+                        autofocus: true,
+                        onFieldSubmitted: (v) {
+                          insertRecord();
+                        },
+                        decoration:
+                            const InputDecoration(labelText: 'Problem Name'),
+                      ),
                     ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.all(10),
-                    child: DropdownButton<String>(
-                      value: problemType,
-                      onChanged: (String? newValue) {
-                        problemType = newValue!;
-                      },
-                      items: <String>[
-                        'Select a Problem Type',
-                        'Social Distancing',
-                        'Unauthorized Business Open',
-                        'Curfew Violations',
-                        'Potholes',
-                        'Accessibility issues',
-                        'Accidents',
-                        'Garbage in the street',
-                        'Illegal Dumping',
-                        'Dead animal',
-                        'Graffiti',
-                        'Vandalism',
-                        'Stray Animals',
-                        'Utility Reports',
-                        'Food Safety',
-                        'Other',
-                      ].map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
+                    Container(
+                      margin: const EdgeInsets.all(10),
+                      child: DropdownButton<String>(
+                        value: problemType,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            problemType = newValue!;
+                          });
+                        },
+                        items: <String>[
+                          'Select a Problem Type',
+                          'Social Distancing',
+                          'Unauthorized Business Open',
+                          'Curfew Violations',
+                          'Potholes',
+                          'Accessibility issues',
+                          'Accidents',
+                          'Garbage in the street',
+                          'Illegal Dumping',
+                          'Dead animal',
+                          'Graffiti',
+                          'Vandalism',
+                          'Stray Animals',
+                          'Utility Reports',
+                          'Food Safety',
+                          'Other',
+                        ].map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                  ),
-                  Container(
-                    width: 300,
-                    margin: const EdgeInsets.only(top: 10),
-                    child: MaterialButton(
-                      child: const Text('Add Marker'),
-                      onPressed: () {
-                        insertRecord();
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  )
-                ],
-              ),
-            ));
+                    Container(
+                      width: 300,
+                      margin: const EdgeInsets.only(top: 10),
+                      child: MaterialButton(
+                        child: const Text('Add Marker'),
+                        onPressed: () {
+                          insertRecord();
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    )
+                  ],
+                ),
+              );
+            }));
   }
 }
