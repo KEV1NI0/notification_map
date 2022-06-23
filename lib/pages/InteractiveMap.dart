@@ -202,32 +202,26 @@ class _InteractiveMapState extends State<InteractiveMap> {
     String name = '';
     String location = currentLatLng.toString();
     String status = 'open';
+    String problemType = 'Select a Problem Type';
 
-    /*Future<void> insertRecord() async{
-      try{
-        var res = await http.post(Uri.parse("http://localhost/DBConnect/insert_record.php"),
+    void insertRecord() {
+      if (name == '') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Please fill in a problem name'),
+        ));
+      } else if (problemType == 'Select a Problem Type') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Please select a problem type'),
+        ));
+      } else {
+        http.post(Uri.parse("http://localhost/DBConnect/insert_record.php"),
             body: {
               'name': name,
               'location': location,
-              'status': status
+              'status': status,
+              'type': problemType
             });
-        var response = jsonDecode(res.body);
-        print(response);
-        if(response['success'] == 'true'){
-          print('record inserted');
-        } else {
-          print('some issue');
-        }
-      } catch (e) {
-        print(e);
-        print("whatever");
       }
-
-    }*/
-
-    void insertRecord() {
-      http.post(Uri.parse("http://localhost/DBConnect/insert_record.php"),
-          body: {'name': name, 'location': location, 'status': status});
     }
 
     return showDialog(
@@ -235,16 +229,51 @@ class _InteractiveMapState extends State<InteractiveMap> {
         builder: (context) => AlertDialog(
               title: Column(
                 children: [
-                  TextFormField(
-                    onChanged: (String value) {
-                      name = value;
-                    },
-                    autofocus: true,
-                    onFieldSubmitted: (v) {
-                      insertRecord();
-                    },
-                    decoration:
-                        const InputDecoration(labelText: 'Problem Name'),
+                  Container(
+                    margin: const EdgeInsets.all(10),
+                    child: TextFormField(
+                      onChanged: (String value) {
+                        name = value;
+                      },
+                      autofocus: true,
+                      onFieldSubmitted: (v) {
+                        insertRecord();
+                      },
+                      decoration:
+                          const InputDecoration(labelText: 'Problem Name'),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.all(10),
+                    child: DropdownButton<String>(
+                      value: problemType,
+                      onChanged: (String? newValue) {
+                        problemType = newValue!;
+                      },
+                      items: <String>[
+                        'Select a Problem Type',
+                        'Social Distancing',
+                        'Unauthorized Business Open',
+                        'Curfew Violations',
+                        'Potholes',
+                        'Accessibility issues',
+                        'Accidents',
+                        'Garbage in the street',
+                        'Illegal Dumping',
+                        'Dead animal',
+                        'Graffiti',
+                        'Vandalism',
+                        'Stray Animals',
+                        'Utility Reports',
+                        'Food Safety',
+                        'Other',
+                      ].map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
                   ),
                   Container(
                     width: 300,
