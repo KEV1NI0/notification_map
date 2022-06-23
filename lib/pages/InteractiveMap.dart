@@ -21,7 +21,7 @@ class _InteractiveMapState extends State<InteractiveMap> {
 
   String? _serviceError = '';
 
-  var interActiveFlags = InteractiveFlag.all;
+  var interActiveFlags = InteractiveFlag.all & ~InteractiveFlag.rotate;
 
   final Location _locationService = Location();
 
@@ -82,12 +82,11 @@ class _InteractiveMapState extends State<InteractiveMap> {
       location = null;
     }
   }
+
   late LatLng currentLatLng;
 
   @override
   Widget build(BuildContext context) {
-
-
     // Until currentLocation is initially updated, Widget can locate to 0, 0
     // by default or store previous location value to show.
     if (_currentLocation != null) {
@@ -102,12 +101,15 @@ class _InteractiveMapState extends State<InteractiveMap> {
         width: 80.0,
         height: 80.0,
         point: currentLatLng,
-        builder: (ctx) => const Icon(Icons.location_pin, color: Colors.red,),
+        builder: (ctx) => const Icon(
+          Icons.location_pin,
+          color: Colors.red,
+        ),
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
+      appBar: AppBar(title: const Text('Add Marker')),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
@@ -115,10 +117,10 @@ class _InteractiveMapState extends State<InteractiveMap> {
             Padding(
               padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
               child: _serviceError!.isEmpty
-                  ? Text('This is a map that is showing '
-                  '(${currentLatLng.latitude}, ${currentLatLng.longitude}).')
+                  ? Text('Your current location is '
+                      '(${currentLatLng.latitude}, ${currentLatLng.longitude}).')
                   : Text(
-                  'Error occurred while acquiring location. Error Message : '
+                      'Error occurred while acquiring location. Error Message : '
                       '$_serviceError'),
             ),
             Flexible(
@@ -126,19 +128,19 @@ class _InteractiveMapState extends State<InteractiveMap> {
                 mapController: _mapController,
                 options: MapOptions(
                   maxBounds: LatLngBounds(
-                    LatLng(12.398636,-69.177026),
-                    LatLng(11.997293,-68.725121),
+                    LatLng(12.398636, -69.177026),
+                    LatLng(11.997293, -68.725121),
                   ),
                   zoom: 13,
                   maxZoom: 17,
                   center:
-                  LatLng(currentLatLng.latitude, currentLatLng.longitude),
+                      LatLng(currentLatLng.latitude, currentLatLng.longitude),
                   interactiveFlags: interActiveFlags,
                 ),
                 layers: [
                   TileLayerOptions(
                     urlTemplate:
-                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                     subdomains: ['a', 'b', 'c'],
                     // For example purposes. It is recommended to use
                     // TileProvider with a caching and retry strategy, like
@@ -160,112 +162,103 @@ class _InteractiveMapState extends State<InteractiveMap> {
               right: 10,
               child: FloatingActionButton(
                   onPressed: () {
-                    if(_currentLocation == null){
+                    if (_currentLocation == null) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            'Please try again'),
+                        content: Text('Please try again'),
                       ));
-                    } else{
-                      print(_currentLocation);
-                      print(currentLatLng);
+                    } else {
+                      _mapController.move(
+                          LatLng(_currentLocation!.latitude!,
+                              _currentLocation!.longitude!),
+                          _mapController.zoom);
                     }
-                    _mapController.move(
-                        LatLng(_currentLocation!.latitude!,
-                            _currentLocation!.longitude!),
-                        _mapController.zoom);
-                    setState(() {
-                    });
+                    setState(() {});
                   },
-                  child: const Icon(Icons.my_location)
-              ),
+                  child: const Icon(Icons.my_location)),
             ),
             Positioned(
               bottom: 75,
               right: 10,
               child: FloatingActionButton(
                   onPressed: () {
-                    if(_currentLocation == null){
+                    if (_currentLocation == null) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            'Please find location first'),
+                        content: Text('Please find location first'),
                       ));
                     } else {
                       alertDialog();
                     }
-                    setState(() {
-                    });
+                    setState(() {});
                   },
-                  child: const Icon(Icons.add_location_alt)
-              ),
+                  child: const Icon(Icons.add_location_alt)),
             )
           ],
         );
       }),
     );
   }
-  Future alertDialog(){
 
-    //TextEditingController name = TextEditingController();
-    //TextEditingController location = TextEditingController();
+  Future alertDialog() {
+    String name = '';
+    String location = currentLatLng.toString();
+    String status = 'open';
 
     /*Future<void> insertRecord() async{
-      if(name.text==""){
-        try{
-          String uri = "http://localhost/DBConnect/insert_record.php";
-          var res = await http.post(Uri.parse(uri), body: {
-            'name': name.text,
-          });
-          var response=jsonDecode(res.body);
-          if(response['success']==""){
-            print("record inserted");
-          } else {
-            print("some issue");
-          }
-        } catch(e){
-          print(e);
+      try{
+        var res = await http.post(Uri.parse("http://localhost/DBConnect/insert_record.php"),
+            body: {
+              'name': name,
+              'location': location,
+              'status': status
+            });
+        var response = jsonDecode(res.body);
+        print(response);
+        if(response['success'] == 'true'){
+          print('record inserted');
+        } else {
+          print('some issue');
         }
-      } else{
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Please fill in the Problem Name'),
-        ));
+      } catch (e) {
+        print(e);
+        print("whatever");
       }
+
     }*/
 
-    String name = '';
-    void insertRecord(){
+    void insertRecord() {
       http.post(Uri.parse("http://localhost/DBConnect/insert_record.php"),
-          body: {
-        'id': '',
-            'name': name,
-          });
-
+          body: {'name': name, 'location': location, 'status': status});
     }
 
-    return showDialog(context: context, builder: (context) => AlertDialog(
-
-      title: Column(
-        children: [
-          TextFormField(
-            onChanged: (String value){
-              name = value;
-            },
-            onFieldSubmitted: (v){
-              insertRecord();
-            },
-            decoration: const InputDecoration(labelText: 'Problem Name'),
-          ),
-          Container(
-            width: 300,
-            margin: const EdgeInsets.only(top: 10),
-            child: MaterialButton(
-              child: const Text('Add Marker'),
-              onPressed: () { insertRecord(); },
-            ),
-          )
-        ],
-      ),
-    )
-    );
+    return showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: Column(
+                children: [
+                  TextFormField(
+                    onChanged: (String value) {
+                      name = value;
+                    },
+                    autofocus: true,
+                    onFieldSubmitted: (v) {
+                      insertRecord();
+                    },
+                    decoration:
+                        const InputDecoration(labelText: 'Problem Name'),
+                  ),
+                  Container(
+                    width: 300,
+                    margin: const EdgeInsets.only(top: 10),
+                    child: MaterialButton(
+                      child: const Text('Add Marker'),
+                      onPressed: () {
+                        insertRecord();
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  )
+                ],
+              ),
+            ));
   }
 }
